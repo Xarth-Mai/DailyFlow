@@ -30,7 +30,7 @@ func TestScanner(t *testing.T) {
 	}
 
 	s := NewScanner(tempDir)
-	
+
 	// Test List
 	list := s.List(1, 10)
 	if len(list) != 3 {

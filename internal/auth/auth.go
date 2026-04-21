@@ -34,11 +34,11 @@ func CheckPasswordHash(password, hash string) bool {
 func GenerateToken(username, passwordHash string) string {
 	expire := time.Now().Add(30 * 24 * time.Hour).Unix()
 	payload := fmt.Sprintf("%s:%d", username, expire)
-	
+
 	mac := hmac.New(sha256.New, []byte(sessionSecret+passwordHash))
 	mac.Write([]byte(payload))
 	signature := hex.EncodeToString(mac.Sum(nil))
-	
+
 	return fmt.Sprintf("%s:%s", payload, signature)
 }
 
@@ -48,24 +48,24 @@ func ValidateToken(token, expectedUser, passwordHash string) bool {
 	if len(parts) != 3 {
 		return false
 	}
-	
+
 	username := parts[0]
 	expireStr := parts[1]
 	signature := parts[2]
-	
+
 	if username != expectedUser {
 		return false
 	}
-	
+
 	payload := fmt.Sprintf("%s:%s", username, expireStr)
 	mac := hmac.New(sha256.New, []byte(sessionSecret+passwordHash))
 	mac.Write([]byte(payload))
 	expectedSignature := hex.EncodeToString(mac.Sum(nil))
-	
+
 	if signature != expectedSignature {
 		return false
 	}
-	
+
 	var expire int64
 	fmt.Sscanf(expireStr, "%d", &expire)
 	return time.Now().Unix() < expire

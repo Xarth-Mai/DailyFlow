@@ -104,9 +104,15 @@ func main() {
 	}
 
 	// Defaults
-	if cfg.Port == 0 { cfg.Port = 5330 }
-	if cfg.BindAddr == "" { cfg.BindAddr = "localhost" }
-	if cfg.AuthUser == "" { cfg.AuthUser = "DailyFlowUser" }
+	if cfg.Port == 0 {
+		cfg.Port = 5330
+	}
+	if cfg.BindAddr == "" {
+		cfg.BindAddr = "localhost"
+	}
+	if cfg.AuthUser == "" {
+		cfg.AuthUser = "DailyFlowUser"
+	}
 	if cfg.AuthPassHash == "" {
 		hash, _ := auth.HashPassword("DailyFlowUnsafePasswd")
 		cfg.AuthPassHash = hash
@@ -148,7 +154,7 @@ func main() {
 	// STATIC
 	subFS, _ := fs.Sub(webFS, "web")
 	staticHandler := http.FileServer(http.FS(subFS))
-	
+
 	// PROTECTED STATIC (except for login.html)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/login.html" || r.URL.Path == "/style.css" || r.URL.Path == "/app.js" {

@@ -26,15 +26,15 @@ func TestTokenValidation(t *testing.T) {
 	user := "testuser"
 	hash := "fakehash"
 	token := GenerateToken(user, hash)
-	
+
 	if !ValidateToken(token, user, hash) {
 		t.Errorf("Token validation failed for valid token")
 	}
-	
+
 	if ValidateToken(token, "otheruser", hash) {
 		t.Errorf("Token validation succeeded for wrong user")
 	}
-	
+
 	if ValidateToken("invalid:token:format", user, hash) {
 		t.Errorf("Token validation succeeded for invalid format")
 	}
@@ -50,7 +50,7 @@ func TestMiddleware(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
-	
+
 	mw := Middleware(user, hash, handler)
 
 	// Test case: No cookie
