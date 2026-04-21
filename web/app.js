@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Marked Renderer
     const renderer = new marked.Renderer();
     let currentMarkdownPath = '';
-    renderer.image = function(token) {
+    renderer.image = function (token) {
         let href = token.href || '';
         const title = token.title || '';
         const text = token.text || '';
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSearchQuery = query;
         timelineEl.innerHTML = '';
         sentinelEl.style.display = 'none';
-        
+
         try {
             const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
             if (res.status === 401) { window.location.href = '/login.html'; return; }
@@ -108,13 +108,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateStr = path.split('/').pop().replace('.md', '');
         const itemEl = document.createElement('div');
         itemEl.className = 'timeline-item';
-        
+
         const cardEl = document.createElement('div');
         cardEl.className = 'timeline-card';
-        
+
         const contentWrapper = document.createElement('div');
         contentWrapper.className = 'markdown-content';
-        
+
         currentMarkdownPath = path;
         const lines = markdown.split('\n');
         const needsExpansion = lines.filter(l => l.trim() !== '').length > 4;
