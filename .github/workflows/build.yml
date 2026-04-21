@@ -1,0 +1,61 @@
+name: Build and Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: 'go.mod'
+        check-latest: true
+        cache: true
+
+    - name: Run Unit Tests
+      run: go test -v ./...
+
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            artifact: linux-amd64
+          - os: linux
+            arch: arm64
+            artifact: linux-arm64
+          - os: windows
+            arch: amd64
+            artifact: windows-amd64
+            ext: .exe
+          - os: windows
+            arch: arm64
+            artifact: windows-arm64
+            ext: .exe
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: 'go.mod'
+        check-latest: true
+
+    - name: Build Binary
+      run: |
+        GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -v -o dailyflow-${{ matrix.artifact }}${{ matrix.ext }} .
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: dailyflow-${{ matrix.artifact }}
+        path: dailyflow-${{ matrix.artifact }}${{ matrix.ext }}
