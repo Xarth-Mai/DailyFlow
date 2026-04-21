@@ -12,24 +12,45 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 //go:embed web
 var webFS embed.FS
 
 func readPasswordInteractively() (string, error) {
-	fmt.Print("Enter new password(will not show): ")
-	exec.Command("stty", "-F", "/dev/tty", "-echo").Run()
-	defer func() {
-		exec.Command("stty", "-F", "/dev/tty", "echo").Run()
+	for {
+		fmt.Print("Enter new password (will not show): ")
+		bytePassword, err := term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return "", err
+		}
 		fmt.Println()
-	}()
-	var password string
-	_, err := fmt.Scanln(&password)
-	return password, err
+		password := strings.TrimSpace(string(bytePassword))
+
+		fmt.Print("Confirm new password (will not show): ")
+		byteConfirm, err := term.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return "", err
+		}
+		fmt.Println()
+		confirm := strings.TrimSpace(string(byteConfirm))
+
+		if password == "" {
+			fmt.Println("Password cannot be empty. Please try again.")
+			continue
+		}
+
+		if password != confirm {
+			fmt.Println("Passwords do not match. Please try again.")
+			continue
+		}
+
+		return password, nil
+	}
 }
 
 func main() {

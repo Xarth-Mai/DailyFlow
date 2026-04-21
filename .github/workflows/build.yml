@@ -41,6 +41,15 @@ jobs:
             arch: arm64
             artifact: windows-arm64
             ext: .exe
+          - os: darwin
+            arch: amd64
+            artifact: darwin-amd64
+          - os: darwin
+            arch: arm64
+            artifact: darwin-arm64
+          - os: freebsd
+            arch: amd64
+            artifact: freebsd-amd64
     steps:
     - uses: actions/checkout@v6
 

@@ -1,6 +1,6 @@
 # 🌊 DailyFlow
 
-**A seamless, high-performance web interface for managing and viewing your daily markdown journals.**
+**A simple web interface for your daily Markdown journals.**
 
 ---
 
@@ -23,7 +23,7 @@ Managing daily journals in flat folders can be tedious. DailyFlow bridges the ga
 - 📦 **Zero-Dependency Core**: Single binary deployment with all static assets embedded.
 - 🚀 **Performance First**: Built in Go for rapid indexing and minimal resource footprint.
 - 🎨 **Premium UI**: Clean, responsive frontend designed for focused reading.
-- 💻 **Cross-Platform**: Native support for Windows and Linux (AMD64 & ARM64).
+- 💻 **Cross-Platform**: Native support for Windows, Linux, macOS (Darwin), and FreeBSD.
 
 ## 🚀 Quick Start
 
