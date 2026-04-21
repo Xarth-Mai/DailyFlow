@@ -31,11 +31,11 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 // GenerateToken creates a simple signed token for a username.
-func GenerateToken(username string) string {
+func GenerateToken(username, passwordHash string) string {
 	expire := time.Now().Add(30 * 24 * time.Hour).Unix()
 	payload := fmt.Sprintf("%s:%d", username, expire)
 	
-	mac := hmac.New(sha256.New, []byte(sessionSecret))
+	mac := hmac.New(sha256.New, []byte(sessionSecret+passwordHash))
 	mac.Write([]byte(payload))
 	signature := hex.EncodeToString(mac.Sum(nil))
 	
@@ -43,7 +43,7 @@ func GenerateToken(username string) string {
 }
 
 // ValidateToken checks if a token is valid and not expired.
-func ValidateToken(token, expectedUser string) bool {
+func ValidateToken(token, expectedUser, passwordHash string) bool {
 	parts := strings.Split(token, ":")
 	if len(parts) != 3 {
 		return false
@@ -58,7 +58,7 @@ func ValidateToken(token, expectedUser string) bool {
 	}
 	
 	payload := fmt.Sprintf("%s:%s", username, expireStr)
-	mac := hmac.New(sha256.New, []byte(sessionSecret))
+	mac := hmac.New(sha256.New, []byte(sessionSecret+passwordHash))
 	mac.Write([]byte(payload))
 	expectedSignature := hex.EncodeToString(mac.Sum(nil))
 	
@@ -72,10 +72,10 @@ func ValidateToken(token, expectedUser string) bool {
 }
 
 // Middleware verifies the session cookie.
-func Middleware(username string, next http.HandlerFunc) http.HandlerFunc {
+func Middleware(username, passwordHash string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(SessionCookieName)
-		if err != nil || !ValidateToken(cookie.Value, username) {
+		if err != nil || !ValidateToken(cookie.Value, username, passwordHash) {
 			// If request is for API, return 401
 			if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/raw/") {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)

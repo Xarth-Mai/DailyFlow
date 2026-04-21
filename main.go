@@ -133,8 +133,8 @@ func main() {
 	mux := http.NewServeMux()
 
 	// API PROTECTED
-	mux.HandleFunc("/api/list", auth.Middleware(cfg.AuthUser, handler.HandleList))
-	mux.HandleFunc("/api/search", auth.Middleware(cfg.AuthUser, handler.HandleSearch))
+	mux.HandleFunc("/api/list", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, handler.HandleList))
+	mux.HandleFunc("/api/search", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, handler.HandleSearch))
 
 	// API UNPROTECTED
 	mux.HandleFunc("/api/login", handler.HandleLogin)
@@ -142,7 +142,7 @@ func main() {
 	// RAW PROTECTED
 	if cfg.WorkspaceDir != "" {
 		fsHandler := http.StripPrefix("/raw/", http.FileServer(http.Dir(cfg.WorkspaceDir)))
-		mux.HandleFunc("/raw/", auth.Middleware(cfg.AuthUser, fsHandler.ServeHTTP))
+		mux.HandleFunc("/raw/", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, fsHandler.ServeHTTP))
 	}
 
 	// STATIC
@@ -155,7 +155,7 @@ func main() {
 			staticHandler.ServeHTTP(w, r)
 			return
 		}
-		auth.Middleware(cfg.AuthUser, staticHandler.ServeHTTP)(w, r)
+		auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, staticHandler.ServeHTTP)(w, r)
 	})
 
 	addr := cfg.BindAddr + ":" + strconv.Itoa(cfg.Port)

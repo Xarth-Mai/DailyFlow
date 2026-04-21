@@ -31,7 +31,7 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if data.Username == a.Config.AuthUser && auth.CheckPasswordHash(data.Password, a.Config.AuthPassHash) {
-		token := auth.GenerateToken(data.Username)
+		token := auth.GenerateToken(data.Username, a.Config.AuthPassHash)
 		http.SetCookie(w, &http.Cookie{
 			Name:     auth.SessionCookieName,
 			Value:    token,

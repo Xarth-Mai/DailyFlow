@@ -24,28 +24,34 @@ func TestHashAndPassword(t *testing.T) {
 
 func TestTokenValidation(t *testing.T) {
 	user := "testuser"
-	token := GenerateToken(user)
+	hash := "fakehash"
+	token := GenerateToken(user, hash)
 	
-	if !ValidateToken(token, user) {
+	if !ValidateToken(token, user, hash) {
 		t.Errorf("Token validation failed for valid token")
 	}
 	
-	if ValidateToken(token, "otheruser") {
+	if ValidateToken(token, "otheruser", hash) {
 		t.Errorf("Token validation succeeded for wrong user")
 	}
 	
-	if ValidateToken("invalid:token:format", user) {
+	if ValidateToken("invalid:token:format", user, hash) {
 		t.Errorf("Token validation succeeded for invalid format")
+	}
+
+	if ValidateToken(token, user, "wronghash") {
+		t.Errorf("Token validation succeeded for wrong hash")
 	}
 }
 
 func TestMiddleware(t *testing.T) {
 	user := "authuser"
+	hash := "somehash"
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 	
-	mw := Middleware(user, handler)
+	mw := Middleware(user, hash, handler)
 
 	// Test case: No cookie
 	req := httptest.NewRequest("GET", "/api/list", nil)
@@ -56,7 +62,7 @@ func TestMiddleware(t *testing.T) {
 	}
 
 	// Test case: Valid cookie
-	token := GenerateToken(user)
+	token := GenerateToken(user, hash)
 	req = httptest.NewRequest("GET", "/api/list", nil)
 	req.AddCookie(&http.Cookie{Name: SessionCookieName, Value: token})
 	rr = httptest.NewRecorder()
