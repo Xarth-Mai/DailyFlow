@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DailyFlow Timeline</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-content">
+            <h1>DailyFlow</h1>
+            <p>Your Diary Timeline</p>
+        </div>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Search entries...">
+        </div>
+        <div class="theme-toggle">
+            <button id="theme-btn" title="Toggle Theme">
+                <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <!-- Icon will be updated by JS -->
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="main-layout">
+
+        <main class="timeline-container">
+            <div id="timeline" class="timeline">
+                <!-- Timeline items will be injected here by app.js -->
+            </div>
+            <div id="loading-sentinel" class="loading-sentinel">
+                <div class="spinner"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
