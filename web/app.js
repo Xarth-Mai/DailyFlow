@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let isLoading = false;
     let hasMore = true;
     let currentMode = 'timeline'; // 'timeline' or 'search'
-    let currentSearchQuery = '';
 
     const timelineEl = document.getElementById('timeline');
     const sentinelEl = document.getElementById('loading-sentinel');
@@ -84,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function performSearch(query) {
         currentMode = 'search';
-        currentSearchQuery = query;
         timelineEl.innerHTML = '';
         sentinelEl.style.display = 'none';
 

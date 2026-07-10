@@ -60,15 +60,6 @@ func main() {
 	setUserPtr := flag.String("setuser", "", "Set the authentication username in config")
 	setBindPtr := flag.String("setbind", "", "Set the listen address in config")
 
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of DailyFlow:\n")
-		fmt.Fprintf(os.Stderr, "  -c string\n\tPath to the configuration file (default \"./config.conf\")\n")
-		fmt.Fprintf(os.Stderr, "  -setpass\n\tInteractively set a new password\n")
-		fmt.Fprintf(os.Stderr, "  -setdir string\n\tSet the workspace directory path\n")
-		fmt.Fprintf(os.Stderr, "  -setuser string\n\tSet the authentication username\n")
-		fmt.Fprintf(os.Stderr, "  -setbind string\n\tSet the listen address\n")
-	}
-
 	flag.Parse()
 
 	if *setPassPtr || *setDirPtr != "" || *setUserPtr != "" || *setBindPtr != "" {

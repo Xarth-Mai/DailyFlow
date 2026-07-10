@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
 )
 
 type Scanner struct {
@@ -107,35 +106,19 @@ func (s *Scanner) Search(query string) ([]JournalEntry, error) {
 	})
 
 	var results []JournalEntry
-	var mu sync.Mutex
-	var wg sync.WaitGroup
-	sem := make(chan struct{}, 10)
-
 	for _, relPath := range files {
-		wg.Add(1)
-		go func(p string) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
+		content, err := os.ReadFile(filepath.Join(s.Workspace, relPath))
+		if err != nil {
+			continue
+		}
 
-			fullPath := filepath.Join(s.Workspace, p)
-			content, err := os.ReadFile(fullPath)
-			if err != nil {
-				return
-			}
-
-			if strings.Contains(strings.ToLower(string(content)), strings.ToLower(query)) {
-				mu.Lock()
-				results = append(results, JournalEntry{
-					Path:    "/" + p,
-					Content: string(content),
-				})
-				mu.Unlock()
-			}
-		}(relPath)
+		if strings.Contains(strings.ToLower(string(content)), strings.ToLower(query)) {
+			results = append(results, JournalEntry{
+				Path:    "/" + relPath,
+				Content: string(content),
+			})
+		}
 	}
-
-	wg.Wait()
 
 	sort.Slice(results, func(i, j int) bool {
 		baseI := filepath.Base(results[i].Path)

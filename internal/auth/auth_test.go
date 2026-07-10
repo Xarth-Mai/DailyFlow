@@ -79,7 +79,3 @@ func TestMiddleware(t *testing.T) {
 		t.Errorf("Expected 303 redirect for UI, got %d", rr.Code)
 	}
 }
-
-func TestTokenExpiration(t *testing.T) {
-	// Skeleton for expansion
-}

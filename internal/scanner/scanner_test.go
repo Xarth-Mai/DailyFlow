@@ -3,7 +3,6 @@ package scanner
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 )
 
@@ -158,30 +157,5 @@ func TestScanner_NoMarkdownFiles(t *testing.T) {
 	s := NewScanner(tempDir)
 	if len(s.List(1, 10)) != 0 {
 		t.Error("Expected 0 results for dir with no md files")
-	}
-}
-
-func TestScanner_ConcurrentSearch(t *testing.T) {
-	tempDir, _ := os.MkdirTemp("", "dailyflow_concurrent_test")
-	defer os.RemoveAll(tempDir)
-
-	count := 50
-	for i := 0; i < count; i++ {
-		name := filepath.Join(tempDir, "file"+strconv.Itoa(i)+".md")
-		content := "searchable content"
-		if i%2 == 0 {
-			content = "other"
-		}
-		os.WriteFile(name, []byte(content), 0644)
-	}
-
-	s := NewScanner(tempDir)
-	results, err := s.Search("searchable")
-	if err != nil {
-		t.Fatalf("Search failed: %v", err)
-	}
-
-	if len(results) != count/2 {
-		t.Errorf("Expected %d results, got %d", count/2, len(results))
 	}
 }

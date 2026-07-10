@@ -8,7 +8,6 @@
     /* Default: light (Parchment) */
     --bg-color: #f5f4ed;
     --bg-surface: #faf9f5;
-    --bg-elevated: #ffffff;
     --text-main: #141413;
     --text-secondary: #5e5d59;
     --text-muted: #87867f;
@@ -34,32 +33,9 @@
     --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
 }
 
-[data-theme="light"] {
-    --bg-color: #f5f4ed;
-    --bg-surface: #faf9f5;
-    --bg-elevated: #ffffff;
-    --text-main: #141413;
-    --text-secondary: #5e5d59;
-    --text-muted: #87867f;
-    --text-warm-dark: #3d3d3a;
-    --accent: #c96442;
-    --accent-light: #d97757;
-    --card-bg: #faf9f5;
-    --border-color: #f0eee6;
-    --border-strong: #e8e6dc;
-    --hover-bg: #f0eee6;
-    --timeline-line: #e8e6dc;
-    --header-bg: #faf9f5;
-    --ring-color: #d1cfc5;
-    --ring-deep: #c2c0b6;
-    --shadow-whisper: rgba(0, 0, 0, 0.05);
-    --code-bg: rgba(0, 0, 0, 0.03);
-}
-
 [data-theme="dark"] {
     --bg-color: #141413;
     --bg-surface: #1e1d1c;
-    --bg-elevated: #30302e;
     --text-main: #faf9f5;
     --text-secondary: #b0aea5;
     --text-muted: #87867f;

@@ -58,23 +58,11 @@ func TestSaveConfigValue(t *testing.T) {
 
 	configPath := filepath.Join(tempDir, "config.conf")
 
-	// Test creating new
-	err = SaveConfigValue(configPath, "KEY1", "VAL1")
-	if err != nil {
-		t.Fatalf("SaveConfigValue failed: %v", err)
-	}
-
-	cfg, _ := LoadConfig(configPath)
-	if cfg == nil || cfg.WorkspaceDir != "" { // WorkspaceDir was not set, but KEY1 isn't in struct.
-		// Wait, Key1 isn't in Config struct. But LoadConfig only loads known keys.
-		// I should use a struct key for testing.
-	}
-
 	err = SaveConfigValue(configPath, "WORKSPACE_DIR", "new_dir")
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg, _ = LoadConfig(configPath)
+	cfg, _ := LoadConfig(configPath)
 	if cfg.WorkspaceDir != "new_dir" {
 		t.Errorf("Expected new_dir, got %s", cfg.WorkspaceDir)
 	}
