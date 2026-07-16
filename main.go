@@ -21,6 +21,33 @@ import (
 //go:embed web
 var webFS embed.FS
 
+func isPublicAsset(path string) bool {
+	switch path {
+	case "/login.html", "/style.css", "/favicon.png", "/app-core.js":
+		return true
+	default:
+		return false
+	}
+}
+
+func ensureSessionSecret(cfg *config.Config, path string) error {
+	if cfg.SessionSecret != "" {
+		if len([]byte(cfg.SessionSecret)) < 32 {
+			return fmt.Errorf("SESSION_SECRET must be at least 32 bytes")
+		}
+		return config.SecureConfigFile(path)
+	}
+	secret, err := auth.GenerateSessionSecret()
+	if err != nil {
+		return err
+	}
+	if err := config.SaveConfigValue(path, "SESSION_SECRET", secret); err != nil {
+		return err
+	}
+	cfg.SessionSecret = secret
+	return nil
+}
+
 func readPasswordInteractively() (string, error) {
 	for {
 		fmt.Print("Enter new password (will not show): ")
@@ -68,20 +95,31 @@ func main() {
 			if err != nil || strings.TrimSpace(pass) == "" {
 				log.Fatalf("Invalid password.")
 			}
-			hash, _ := auth.HashPassword(strings.TrimSpace(pass))
-			config.SaveConfigValue(*configPathPtr, "AUTH_PASS_HASH", hash)
+			hash, err := auth.HashPassword(strings.TrimSpace(pass))
+			if err != nil {
+				log.Fatalf("Failed to hash password: %v", err)
+			}
+			if err := config.SaveConfigValue(*configPathPtr, "AUTH_PASS_HASH", hash); err != nil {
+				log.Fatalf("Failed to update password: %v", err)
+			}
 			fmt.Println("Password updated successfully.")
 		}
 		if *setDirPtr != "" {
-			config.SaveConfigValue(*configPathPtr, "WORKSPACE_DIR", *setDirPtr)
+			if err := config.SaveConfigValue(*configPathPtr, "WORKSPACE_DIR", *setDirPtr); err != nil {
+				log.Fatalf("Failed to update workspace directory: %v", err)
+			}
 			fmt.Println("Workspace directory updated.")
 		}
 		if *setUserPtr != "" {
-			config.SaveConfigValue(*configPathPtr, "AUTH_USER", *setUserPtr)
+			if err := config.SaveConfigValue(*configPathPtr, "AUTH_USER", *setUserPtr); err != nil {
+				log.Fatalf("Failed to update username: %v", err)
+			}
 			fmt.Println("Username updated.")
 		}
 		if *setBindPtr != "" {
-			config.SaveConfigValue(*configPathPtr, "BIND_ADDR", *setBindPtr)
+			if err := config.SaveConfigValue(*configPathPtr, "BIND_ADDR", *setBindPtr); err != nil {
+				log.Fatalf("Failed to update bind address: %v", err)
+			}
 			fmt.Println("Bind address updated.")
 		}
 		return
@@ -108,6 +146,9 @@ func main() {
 		hash, _ := auth.HashPassword("DailyFlowUnsafePasswd")
 		cfg.AuthPassHash = hash
 	}
+	if err := ensureSessionSecret(cfg, *configPathPtr); err != nil {
+		log.Fatalf("Failed to initialize session secret: %v", err)
+	}
 
 	scn := scanner.NewScanner(cfg.WorkspaceDir)
 	handler := &api.API{Config: cfg, Scanner: scn}
@@ -130,16 +171,24 @@ func main() {
 	mux := http.NewServeMux()
 
 	// API PROTECTED
-	mux.HandleFunc("/api/list", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, handler.HandleList))
-	mux.HandleFunc("/api/search", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, handler.HandleSearch))
+	mux.HandleFunc("/api/list", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, cfg.SessionSecret, handler.HandleList))
+	mux.HandleFunc("/api/months", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, cfg.SessionSecret, handler.HandleMonths))
+	mux.HandleFunc("/api/entry", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, cfg.SessionSecret, handler.HandleEntry))
+	mux.HandleFunc("/api/search", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, cfg.SessionSecret, handler.HandleSearch))
 
 	// API UNPROTECTED
 	mux.HandleFunc("/api/login", handler.HandleLogin)
+	mux.HandleFunc("/api/logout", handler.HandleLogout)
 
 	// RAW PROTECTED
 	if cfg.WorkspaceDir != "" {
-		fsHandler := http.StripPrefix("/raw/", http.FileServer(http.Dir(cfg.WorkspaceDir)))
-		mux.HandleFunc("/raw/", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, fsHandler.ServeHTTP))
+		workspaceRoot, err := os.OpenRoot(cfg.WorkspaceDir)
+		if err != nil {
+			log.Fatalf("Failed to open workspace: %v", err)
+		}
+		defer workspaceRoot.Close()
+		fsHandler := http.StripPrefix("/raw/", http.FileServerFS(workspaceRoot.FS()))
+		mux.HandleFunc("/raw/", auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, cfg.SessionSecret, fsHandler.ServeHTTP))
 	}
 
 	// STATIC
@@ -148,11 +197,11 @@ func main() {
 
 	// PROTECTED STATIC (except for login.html)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/login.html" || r.URL.Path == "/style.css" || r.URL.Path == "/app.js" {
+		if isPublicAsset(r.URL.Path) {
 			staticHandler.ServeHTTP(w, r)
 			return
 		}
-		auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, staticHandler.ServeHTTP)(w, r)
+		auth.Middleware(cfg.AuthUser, cfg.AuthPassHash, cfg.SessionSecret, staticHandler.ServeHTTP)(w, r)
 	})
 
 	addr := cfg.BindAddr + ":" + strconv.Itoa(cfg.Port)

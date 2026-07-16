@@ -2,10 +2,13 @@ package auth
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
-	"fmt"
+	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -14,9 +17,15 @@ import (
 
 const (
 	SessionCookieName = "dailyflow_session"
-	// In a real app, this should be in config/env
-	sessionSecret = "dailyflow-secret-key-change-me"
 )
+
+func GenerateSessionSecret() (string, error) {
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(secret), nil
+}
 
 // HashPassword generates a bcrypt hash for a password.
 func HashPassword(password string) (string, error) {
@@ -30,59 +39,81 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-// GenerateToken creates a simple signed token for a username.
-func GenerateToken(username, passwordHash string) string {
-	expire := time.Now().Add(30 * 24 * time.Hour).Unix()
-	payload := fmt.Sprintf("%s:%d", username, expire)
+type tokenPayload struct {
+	Username string `json:"u"`
+	Expires  int64  `json:"e"`
+}
+
+// GenerateToken creates a signed token for a username.
+func GenerateToken(username, passwordHash, sessionSecret string) string {
+	payload, _ := json.Marshal(tokenPayload{
+		Username: username,
+		Expires:  time.Now().Add(30 * 24 * time.Hour).Unix(),
+	})
+	encodedPayload := base64.RawURLEncoding.EncodeToString(payload)
 
 	mac := hmac.New(sha256.New, []byte(sessionSecret+passwordHash))
-	mac.Write([]byte(payload))
+	mac.Write([]byte(encodedPayload))
 	signature := hex.EncodeToString(mac.Sum(nil))
 
-	return fmt.Sprintf("%s:%s", payload, signature)
+	return encodedPayload + "." + signature
 }
 
 // ValidateToken checks if a token is valid and not expired.
-func ValidateToken(token, expectedUser, passwordHash string) bool {
-	parts := strings.Split(token, ":")
-	if len(parts) != 3 {
+func ValidateToken(token, expectedUser, passwordHash, sessionSecret string) bool {
+	parts := strings.SplitN(token, ".", 2)
+	if len(parts) != 2 {
 		return false
 	}
-
-	username := parts[0]
-	expireStr := parts[1]
-	signature := parts[2]
-
-	if username != expectedUser {
-		return false
-	}
-
-	payload := fmt.Sprintf("%s:%s", username, expireStr)
 	mac := hmac.New(sha256.New, []byte(sessionSecret+passwordHash))
-	mac.Write([]byte(payload))
-	expectedSignature := hex.EncodeToString(mac.Sum(nil))
-
-	if signature != expectedSignature {
+	mac.Write([]byte(parts[0]))
+	providedSignature, err := hex.DecodeString(parts[1])
+	if err != nil || !hmac.Equal(providedSignature, mac.Sum(nil)) {
 		return false
 	}
+	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[0])
+	if err != nil {
+		return false
+	}
+	var payload tokenPayload
+	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		return false
+	}
+	return payload.Username == expectedUser && time.Now().Unix() < payload.Expires
+}
 
-	var expire int64
-	fmt.Sscanf(expireStr, "%d", &expire)
-	return time.Now().Unix() < expire
+func NewSessionCookie(token string, secure bool) *http.Cookie {
+	return &http.Cookie{
+		Name:     SessionCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   30 * 24 * 60 * 60,
+	}
+}
+
+func ExpiredSessionCookie(secure bool) *http.Cookie {
+	cookie := NewSessionCookie("", secure)
+	cookie.MaxAge = -1
+	cookie.Expires = time.Unix(1, 0)
+	return cookie
 }
 
 // Middleware verifies the session cookie.
-func Middleware(username, passwordHash string, next http.HandlerFunc) http.HandlerFunc {
+func Middleware(username, passwordHash, sessionSecret string, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(SessionCookieName)
-		if err != nil || !ValidateToken(cookie.Value, username, passwordHash) {
+		if err != nil || !ValidateToken(cookie.Value, username, passwordHash, sessionSecret) {
 			// If request is for API, return 401
 			if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/raw/") {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
-			// Otherwise redirect to login
-			http.Redirect(w, r, "/login.html", http.StatusSeeOther)
+			// Otherwise redirect to login and preserve the same-origin target.
+			returnPath := url.QueryEscape(r.URL.RequestURI())
+			http.Redirect(w, r, "/login.html?return="+returnPath, http.StatusSeeOther)
 			return
 		}
 		next(w, r)

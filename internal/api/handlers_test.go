@@ -15,8 +15,10 @@ import (
 
 func TestHandleLogin(t *testing.T) {
 	cfg := &config.Config{
-		AuthUser:     "user",
-		AuthPassHash: "",
+		AuthUser:      "user",
+		AuthPassHash:  "",
+		SessionSecret: "api-test-session-secret",
+		CookieSecure:  true,
 	}
 	hash, _ := auth.HashPassword("pass")
 	cfg.AuthPassHash = hash
@@ -33,6 +35,13 @@ func TestHandleLogin(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Errorf("Expected 200, got %d", rr.Code)
 	}
+	cookies := rr.Result().Cookies()
+	if len(cookies) != 1 {
+		t.Fatalf("Expected one session cookie, got %d", len(cookies))
+	}
+	if !cookies[0].HttpOnly || !cookies[0].Secure || cookies[0].SameSite != http.SameSiteLaxMode {
+		t.Fatalf("Session cookie is missing security attributes: %#v", cookies[0])
+	}
 
 	// Test wrong pass
 	loginData = map[string]string{"username": "user", "password": "wrong"}
@@ -42,6 +51,32 @@ func TestHandleLogin(t *testing.T) {
 	api.HandleLogin(rr, req)
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("Expected 401, got %d", rr.Code)
+	}
+}
+
+func TestHandleLogout(t *testing.T) {
+	api := &API{Config: &config.Config{CookieSecure: true}}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/logout", nil)
+	rr := httptest.NewRecorder()
+	api.HandleLogout(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("Expected 204, got %d", rr.Code)
+	}
+	cookies := rr.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != auth.SessionCookieName || cookies[0].MaxAge >= 0 {
+		t.Fatalf("Expected logout to expire the session cookie: %#v", cookies)
+	}
+	if !cookies[0].HttpOnly || !cookies[0].Secure || cookies[0].SameSite != http.SameSiteLaxMode {
+		t.Fatalf("Expired cookie is missing security attributes: %#v", cookies[0])
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/logout", nil)
+	rr = httptest.NewRecorder()
+	api.HandleLogout(rr, req)
+	if rr.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("Expected 405 for GET logout, got %d", rr.Code)
 	}
 }
 
@@ -69,10 +104,80 @@ func TestHandleList(t *testing.T) {
 	}
 }
 
+func TestHandleListFiltersByMonth(t *testing.T) {
+	tempDir := t.TempDir()
+	for _, name := range []string{"2026-04-21.md", "2026-03-31.md"} {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte(name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	api := &API{Scanner: scanner.NewScanner(tempDir)}
+	req := httptest.NewRequest(http.MethodGet, "/api/list?page=1&month=2026-04", nil)
+	rr := httptest.NewRecorder()
+	api.HandleList(rr, req)
+
+	var results []scanner.JournalEntry
+	if err := json.NewDecoder(rr.Body).Decode(&results); err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 || results[0].Path != "/2026-04-21.md" {
+		t.Fatalf("Unexpected filtered results: %v", results)
+	}
+}
+
+func TestHandleMonths(t *testing.T) {
+	tempDir := t.TempDir()
+	for _, name := range []string{"2026-04-21.md", "2026-03-31.md"} {
+		if err := os.WriteFile(filepath.Join(tempDir, name), []byte(name), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	api := &API{Scanner: scanner.NewScanner(tempDir)}
+	req := httptest.NewRequest(http.MethodGet, "/api/months", nil)
+	rr := httptest.NewRecorder()
+	api.HandleMonths(rr, req)
+
+	var months []string
+	if err := json.NewDecoder(rr.Body).Decode(&months); err != nil {
+		t.Fatal(err)
+	}
+	if len(months) != 2 || months[0] != "2026-04" || months[1] != "2026-03" {
+		t.Fatalf("Unexpected months: %v", months)
+	}
+}
+
+func TestHandleEntry(t *testing.T) {
+	tempDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tempDir, "2026-07-17.md"), []byte("# Entry"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	api := &API{Scanner: scanner.NewScanner(tempDir)}
+
+	for _, test := range []struct {
+		url  string
+		code int
+		body string
+	}{
+		{"/api/entry?path=%2F2026-07-17.md", http.StatusOK, "# Entry"},
+		{"/api/entry?path=%2F..%2Foutside.md", http.StatusBadRequest, ""},
+		{"/api/entry?path=%2Fmissing.md", http.StatusNotFound, ""},
+	} {
+		req := httptest.NewRequest(http.MethodGet, test.url, nil)
+		rr := httptest.NewRecorder()
+		api.HandleEntry(rr, req)
+		if rr.Code != test.code {
+			t.Errorf("%s: expected %d, got %d", test.url, test.code, rr.Code)
+		}
+		if test.body != "" && rr.Body.String() != test.body {
+			t.Errorf("%s: expected body %q, got %q", test.url, test.body, rr.Body.String())
+		}
+	}
+}
+
 func TestHandleSearch(t *testing.T) {
 	tempDir, _ := os.MkdirTemp("", "api_search_test")
 	defer os.RemoveAll(tempDir)
-	os.WriteFile(filepath.Join(tempDir, "test.md"), []byte("findme"), 0644)
+	os.WriteFile(filepath.Join(tempDir, "test.md"), []byte("findme   here"), 0644)
 
 	cfg := &config.Config{WorkspaceDir: tempDir}
 	scn := scanner.NewScanner(tempDir)
@@ -86,9 +191,18 @@ func TestHandleSearch(t *testing.T) {
 		t.Errorf("Expected 200, got %d", rr.Code)
 	}
 
-	var results []scanner.JournalEntry
+	var results []scanner.SearchResult
 	json.NewDecoder(rr.Body).Decode(&results)
 	if len(results) != 1 {
 		t.Errorf("Expected 1 result, got %d", len(results))
+	}
+
+	req = httptest.NewRequest("GET", "/api/search?q=+++", nil)
+	rr = httptest.NewRecorder()
+	api.HandleSearch(rr, req)
+	results = nil
+	json.NewDecoder(rr.Body).Decode(&results)
+	if len(results) != 0 {
+		t.Errorf("Expected whitespace-only query to return no results, got %d", len(results))
 	}
 }
