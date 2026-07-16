@@ -81,8 +81,7 @@ func TestHandleLogout(t *testing.T) {
 }
 
 func TestHandleList(t *testing.T) {
-	tempDir, _ := os.MkdirTemp("", "api_list_test")
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 	os.WriteFile(filepath.Join(tempDir, "test.md"), []byte("content"), 0644)
 
 	cfg := &config.Config{WorkspaceDir: tempDir}
@@ -175,8 +174,7 @@ func TestHandleEntry(t *testing.T) {
 }
 
 func TestHandleSearch(t *testing.T) {
-	tempDir, _ := os.MkdirTemp("", "api_search_test")
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 	os.WriteFile(filepath.Join(tempDir, "test.md"), []byte("findme   here"), 0644)
 
 	cfg := &config.Config{WorkspaceDir: tempDir}

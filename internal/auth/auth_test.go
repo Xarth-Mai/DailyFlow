@@ -102,14 +102,14 @@ func TestMiddleware(t *testing.T) {
 		t.Errorf("Expected 200 for valid session, got %d", rr.Code)
 	}
 
-	// Test case: UI redirect preserves the same-origin permalink.
-	req = httptest.NewRequest("GET", "/?entry=%2F2026%2F07%2Fentry.md", nil)
+	// Test case: UI redirect preserves the same-origin page filter.
+	req = httptest.NewRequest("GET", "/?month=2026-07", nil)
 	rr = httptest.NewRecorder()
 	mw.ServeHTTP(rr, req)
 	if rr.Code != http.StatusSeeOther {
 		t.Errorf("Expected 303 redirect for UI, got %d", rr.Code)
 	}
-	if location := rr.Header().Get("Location"); location != "/login.html?return=%2F%3Fentry%3D%252F2026%252F07%252Fentry.md" {
+	if location := rr.Header().Get("Location"); location != "/login.html?return=%2F%3Fmonth%3D2026-07" {
 		t.Errorf("Unexpected login return URL: %s", location)
 	}
 }

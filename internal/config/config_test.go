@@ -7,11 +7,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "dailyflow_config_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	configPath := filepath.Join(tempDir, "config.conf")
 	content := `
@@ -83,15 +79,11 @@ func TestSecureConfigFileRejectsSymlink(t *testing.T) {
 }
 
 func TestSaveConfigValue(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "dailyflow_save_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	configPath := filepath.Join(tempDir, "config.conf")
 
-	err = SaveConfigValue(configPath, "WORKSPACE_DIR", "new_dir")
+	err := SaveConfigValue(configPath, "WORKSPACE_DIR", "new_dir")
 	if err != nil {
 		t.Fatal(err)
 	}

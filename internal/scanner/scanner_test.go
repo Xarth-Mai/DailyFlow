@@ -8,12 +8,7 @@ import (
 )
 
 func TestScanner(t *testing.T) {
-	// Setup temporary workspace
-	tempDir, err := os.MkdirTemp("", "dailyflow_test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	// Create test files
 	files := map[string]string{
@@ -32,7 +27,7 @@ func TestScanner(t *testing.T) {
 	s := NewScanner(tempDir)
 
 	// Test List
-	list := s.List(1, 10)
+	list := s.ListByMonth(1, 10, "")
 	if len(list) != 3 {
 		t.Errorf("Expected 3 markdown files, got %d", len(list))
 	}
@@ -41,7 +36,7 @@ func TestScanner(t *testing.T) {
 	}
 
 	// Test Search
-	results, _ := s.Search("sunny")
+	results := s.Search("sunny")
 	if len(results) != 1 || results[0].Path != "/2026-04-20.md" {
 		t.Errorf("Search failed to find 'sunny' in correct file, got %v", results)
 	}
@@ -52,7 +47,7 @@ func TestScanner(t *testing.T) {
 		t.Errorf("Expected matching line as snippet, got %q", results[0].Snippet)
 	}
 
-	results, _ = s.Search("idea")
+	results = s.Search("idea")
 	if len(results) != 1 || results[0].Path != "/notes/idea.md" {
 		t.Errorf("Search failed for nested file")
 	}
@@ -85,14 +80,14 @@ func TestGetEntryStaysInsideWorkspace(t *testing.T) {
 			t.Errorf("Expected unsafe entry path %q to fail", path)
 		}
 	}
-	for _, entry := range s.List(1, 20) {
+	for _, entry := range s.ListByMonth(1, 20, "") {
 		if entry.Path == "/escape.md" {
 			t.Fatal("Timeline must not follow symlinks outside the workspace")
 		}
 	}
-	results, err := s.Search("outside")
-	if err != nil || len(results) != 0 {
-		t.Fatalf("Search must not follow symlinks outside the workspace: %v, %v", results, err)
+	results := s.Search("outside")
+	if len(results) != 0 {
+		t.Fatalf("Search must not follow symlinks outside the workspace: %v", results)
 	}
 }
 
@@ -103,9 +98,9 @@ func TestSearchSnippetKeepsTheMatchInLongLines(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	results, err := NewScanner(tempDir).Search("needle")
-	if err != nil || len(results) != 1 {
-		t.Fatalf("Unexpected search result: %v, %v", results, err)
+	results := NewScanner(tempDir).Search("needle")
+	if len(results) != 1 {
+		t.Fatalf("Unexpected search result: %v", results)
 	}
 	if len([]rune(results[0].Snippet)) > 203 {
 		t.Fatalf("Snippet is too long: %d", len([]rune(results[0].Snippet)))
@@ -116,11 +111,7 @@ func TestSearchSnippetKeepsTheMatchInLongLines(t *testing.T) {
 }
 
 func TestSorting(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "dailyflow_sort_test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	files := map[string]string{
 		"2026/2026-03-31.md":    "march",
@@ -134,7 +125,7 @@ func TestSorting(t *testing.T) {
 	}
 
 	s := NewScanner(tempDir)
-	list := s.List(1, 10)
+	list := s.ListByMonth(1, 10, "")
 
 	if len(list) != 2 {
 		t.Fatalf("Expected 2 files, got %d", len(list))
@@ -149,7 +140,7 @@ func TestSorting(t *testing.T) {
 	}
 
 	// Test Search sorting
-	results, _ := s.Search("r")
+	results := s.Search("r")
 	if len(results) != 2 {
 		t.Fatalf("Expected 2 search results, got %d", len(results))
 	}
@@ -189,18 +180,17 @@ func TestMonthsAndMonthlyList(t *testing.T) {
 
 func TestScanner_EmptyWorkspace(t *testing.T) {
 	s := NewScanner("")
-	if len(s.List(1, 10)) != 0 {
+	if len(s.ListByMonth(1, 10, "")) != 0 {
 		t.Error("List should return empty slice for empty workspace")
 	}
-	res, _ := s.Search("test")
+	res := s.Search("test")
 	if len(res) != 0 {
 		t.Error("Search should return empty slice for empty workspace")
 	}
 }
 
 func TestScanner_Pagination(t *testing.T) {
-	tempDir, _ := os.MkdirTemp("", "dailyflow_page_test")
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 
 	for i := 1; i <= 10; i++ {
 		name := filepath.Join(tempDir, "file"+string(rune('a'+i))+".md")
@@ -210,42 +200,41 @@ func TestScanner_Pagination(t *testing.T) {
 	s := NewScanner(tempDir)
 
 	// Test page < 1
-	if len(s.List(0, 5)) != 5 {
+	if len(s.ListByMonth(0, 5, "")) != 5 {
 		t.Error("Should default to page 1 if page < 1")
 	}
 
 	// Test limit <= 0
-	if len(s.List(1, 0)) != 10 {
-		t.Errorf("Expected 10 files with default limit, got %d", len(s.List(1, 0)))
+	if len(s.ListByMonth(1, 0, "")) != 10 {
+		t.Errorf("Expected 10 files with default limit, got %d", len(s.ListByMonth(1, 0, "")))
 	}
 
 	// Test specific page/limit
-	list := s.List(2, 3)
+	list := s.ListByMonth(2, 3, "")
 	if len(list) != 3 {
 		t.Errorf("Expected 3 files on page 2, got %d", len(list))
 	}
 
 	// Test out of bounds
-	if len(s.List(10, 10)) != 0 {
+	if len(s.ListByMonth(10, 10, "")) != 0 {
 		t.Error("Should return empty for page out of range")
 	}
 }
 
 func TestScanner_Search_EmptyQuery(t *testing.T) {
 	s := NewScanner("some/path")
-	res, _ := s.Search("")
+	res := s.Search("")
 	if len(res) != 0 {
 		t.Error("Empty query should return empty results")
 	}
 }
 
 func TestScanner_NoMarkdownFiles(t *testing.T) {
-	tempDir, _ := os.MkdirTemp("", "dailyflow_nomd_test")
-	defer os.RemoveAll(tempDir)
+	tempDir := t.TempDir()
 	os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("text"), 0644)
 
 	s := NewScanner(tempDir)
-	if len(s.List(1, 10)) != 0 {
+	if len(s.ListByMonth(1, 10, "")) != 0 {
 		t.Error("Expected 0 results for dir with no md files")
 	}
 }

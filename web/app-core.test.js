@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { buildEntryURL, buildLoginURL, escapeAttribute, highlightParts, initialMode, isActiveRequest, isSafeLinkHref, isValidEntryPath, safeReturnPath, shouldAutoExpand, shouldLoadTimeline } = require('./app-core.js');
+const { buildLoginURL, escapeAttribute, highlightParts, initialMode, isActiveRequest, isSafeLinkHref, safeReturnPath, shouldAutoExpand, shouldLoadTimeline } = require('./app-core.js');
 
 test('starts in routing mode so observers cannot race the initial route', () => {
     assert.equal(initialMode(), 'routing');
@@ -53,28 +53,16 @@ test('allows only safe Markdown link destinations', () => {
 
 test('preserves the current page when redirecting an expired session to login', () => {
     assert.equal(
-        buildLoginURL('/', '?entry=%2F2026%2F07%2Fentry.md'),
-        '/login.html?return=%2F%3Fentry%3D%252F2026%252F07%252Fentry.md',
+        buildLoginURL('/', '?month=2026-07'),
+        '/login.html?return=%2F%3Fmonth%3D2026-07',
     );
 });
 
 test('accepts only same-origin login return paths without control characters', () => {
     const origin = 'https://daily.example';
-    assert.equal(safeReturnPath('/?entry=%2F2026%2F07%2Fentry.md', origin), '/?entry=%2F2026%2F07%2Fentry.md');
+    assert.equal(safeReturnPath('/?month=2026-07', origin), '/?month=2026-07');
     assert.equal(safeReturnPath('/archive#july', origin), '/archive#july');
     for (const value of ['//evil.example', '/\\evil.example', '/\n/evil.example', '/\t/evil.example', 'https://evil.example/', 'relative']) {
         assert.equal(safeReturnPath(value, origin), '/');
     }
-});
-
-test('builds stable links only for safe Markdown entry paths', () => {
-    assert.equal(isValidEntryPath('/2026/07/2026-07-17.md'), true);
-    assert.equal(isValidEntryPath('/2026/07/Entry.MD'), true);
-    assert.equal(isValidEntryPath('/../../etc/passwd'), false);
-    assert.equal(isValidEntryPath('https://example.com/entry.md'), false);
-    assert.equal(isValidEntryPath('/notes.txt'), false);
-    assert.equal(
-        buildEntryURL('/2026/07/2026-07-17.md', 'https://daily.example/?month=2026-07#old'),
-        'https://daily.example/?entry=%2F2026%2F07%2F2026-07-17.md',
-    );
 });

@@ -130,7 +130,7 @@
 
 <body>
     <div class="theme-toggle" style="position: fixed; top: 1rem; right: 1rem;">
-        <button id="theme-btn" title="Toggle Theme">
+        <button id="theme-btn" class="icon-button" title="Toggle Theme" aria-label="Toggle theme" type="button">
             <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <!-- Icon will be updated by JS -->
@@ -161,46 +161,8 @@
     </div>
 
     <script src="/app-core.js"></script>
+    <script src="/theme.js"></script>
     <script>
-        // Theme logic
-        const themeBtn = document.getElementById('theme-btn');
-        const themeIcon = document.getElementById('theme-icon');
-        const THEMES = ['system', 'light', 'dark'];
-        const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-        function updateThemeIcon(theme) {
-            if (theme === 'system') {
-                themeIcon.innerHTML = `<path d="M21 9C19.3529 9 17.8917 9.79647 16.9808 11.0253M21 6C18.5797 6 16.4104 7.07479 14.9434 8.77313M21 3C17.1326 3 13.7313 4.99586 11.77 8.01376M11.77 8.01376C9.72698 8.16181 8.00348 9.48869 7.25 11.25C4.7 11.6562 3 13.7572 3 16.0315C3 18.7755 5.28335 21 8.1 21L15.75 21C18.0972 21 20 19.1279 20 16.8185C20 15.1039 18.951 13.5202 17.45 12.875C17.4116 12.2181 17.2475 11.5941 16.9808 11.0253" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
-            } else if (theme === 'light') {
-                themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-            } else {
-                themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
-            }
-        }
-
-        function applyTheme(theme) {
-            if (theme === 'system') {
-                document.documentElement.setAttribute('data-theme', systemDarkQuery.matches ? 'dark' : 'light');
-            } else {
-                document.documentElement.setAttribute('data-theme', theme);
-            }
-            localStorage.setItem('dailyflow-theme', theme);
-            updateThemeIcon(theme);
-        }
-
-        systemDarkQuery.addEventListener('change', () => {
-            if (localStorage.getItem('dailyflow-theme') === 'system') applyTheme('system');
-        });
-
-        let savedTheme = localStorage.getItem('dailyflow-theme') || 'system';
-        applyTheme(savedTheme);
-
-        themeBtn.addEventListener('click', () => {
-            let currentTheme = localStorage.getItem('dailyflow-theme') || 'system';
-            let nextIndex = (THEMES.indexOf(currentTheme) + 1) % THEMES.length;
-            applyTheme(THEMES[nextIndex]);
-        });
-
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;

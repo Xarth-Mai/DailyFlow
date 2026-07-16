@@ -96,11 +96,6 @@ func entryMonth(path string) string {
 	return date.Format("2006-01")
 }
 
-// List returns a paginated list of entries by scanning the directory.
-func (s *Scanner) List(page, limit int) []JournalEntry {
-	return s.ListByMonth(page, limit, "")
-}
-
 func (s *Scanner) ListByMonth(page, limit int, month string) []JournalEntry {
 	paths := s.markdownPaths()
 	if month != "" {
@@ -179,9 +174,9 @@ func matchingSnippet(line, query string) string {
 }
 
 // Search scans file contents for a query string by walking the directory.
-func (s *Scanner) Search(query string) ([]SearchResult, error) {
+func (s *Scanner) Search(query string) []SearchResult {
 	if query == "" || s.Workspace == "" {
-		return []SearchResult{}, nil
+		return []SearchResult{}
 	}
 
 	queryLower := strings.ToLower(query)
@@ -212,5 +207,5 @@ func (s *Scanner) Search(query string) ([]SearchResult, error) {
 		}
 		results = append(results, SearchResult{Path: path, Title: title, Snippet: snippet})
 	}
-	return results, nil
+	return results
 }

@@ -26,39 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const monthSelect = document.getElementById('month-select');
     const logoutBtn = document.getElementById('logout-btn');
 
-    // Theme logic
-    const themeBtn = document.getElementById('theme-btn');
-    const themeIcon = document.getElementById('theme-icon');
-    const THEMES = ['system', 'light', 'dark'];
-    const systemDarkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-    function updateThemeIcon(theme) {
-        if (theme === 'system') {
-            themeIcon.innerHTML = `<path d="M21 9C19.3529 9 17.8917 9.79647 16.9808 11.0253M21 6C18.5797 6 16.4104 7.07479 14.9434 8.77313M21 3C17.1326 3 13.7313 4.99586 11.77 8.01376M11.77 8.01376C9.72698 8.16181 8.00348 9.48869 7.25 11.25C4.7 11.6562 3 13.7572 3 16.0315C3 18.7755 5.28335 21 8.1 21L15.75 21C18.0972 21 20 19.1279 20 16.8185C20 15.1039 18.951 13.5202 17.45 12.875C17.4116 12.2181 17.2475 11.5941 16.9808 11.0253M11.77 8.01376C11.8958 8.00465 12.0229 8 12.151 8C13.1755 8 14.1323 8.28298 14.9434 8.77313M14.9434 8.77313C15.8305 9.30914 16.5435 10.0929 16.9808 11.0253" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
-        } else if (theme === 'light') {
-            themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
-        } else {
-            themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
-        }
-    }
-
-    function applyTheme(theme) {
-        document.documentElement.setAttribute(
-            'data-theme',
-            theme === 'system' ? (systemDarkQuery.matches ? 'dark' : 'light') : theme,
-        );
-        localStorage.setItem('dailyflow-theme', theme);
-        updateThemeIcon(theme);
-    }
-
-    systemDarkQuery.addEventListener('change', () => {
-        if (localStorage.getItem('dailyflow-theme') === 'system') applyTheme('system');
-    });
-    applyTheme(localStorage.getItem('dailyflow-theme') || 'system');
-    themeBtn.addEventListener('click', () => {
-        const currentTheme = localStorage.getItem('dailyflow-theme') || 'system';
-        applyTheme(THEMES[(THEMES.indexOf(currentTheme) + 1) % THEMES.length]);
-    });
 
     // Marked renderer
     const renderer = new marked.Renderer();
@@ -95,6 +62,40 @@ document.addEventListener('DOMContentLoaded', () => {
         hasMore = true;
         renderedTimelineCount = 0;
     }
+
+    const autoFocusQuery = window.matchMedia('(hover: none), (pointer: coarse)');
+    let focusFrame = null;
+
+    function updateTimelineFocus() {
+        focusFrame = null;
+        const items = Array.from(timelineEl.querySelectorAll('.timeline-item'));
+        if (!autoFocusQuery.matches || items.length === 0) {
+            items.forEach(item => item.classList.remove('is-focused'));
+            return;
+        }
+        const viewportCenter = window.innerHeight / 2;
+        let focusedItem = null;
+        let closestDistance = Infinity;
+        items.forEach(item => {
+            const rect = item.getBoundingClientRect();
+            const distance = viewportCenter < rect.top
+                ? rect.top - viewportCenter
+                : viewportCenter > rect.bottom ? viewportCenter - rect.bottom : 0;
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                focusedItem = item;
+            }
+        });
+        items.forEach(item => item.classList.toggle('is-focused', item === focusedItem));
+    }
+
+    function scheduleTimelineFocus() {
+        if (focusFrame === null) focusFrame = window.requestAnimationFrame(updateTimelineFocus);
+    }
+
+    window.addEventListener('scroll', scheduleTimelineFocus, { passive: true });
+    window.addEventListener('resize', scheduleTimelineFocus);
+    autoFocusQuery.addEventListener('change', scheduleTimelineFocus);
 
     function showMessage(message) {
         timelineEl.innerHTML = '';
@@ -139,40 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function createActionButton(label, handler) {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'card-action-btn';
-        button.textContent = label;
-        button.addEventListener('click', handler);
-        return button;
-    }
-
-    async function copyEntryLink(path, button) {
-        try {
-            await navigator.clipboard.writeText(DailyFlowCore.buildEntryURL(path, window.location.href));
-            button.textContent = 'Copied';
-        } catch (error) {
-            console.error(error);
-            button.textContent = 'Copy failed';
-        }
-        window.setTimeout(() => { button.textContent = 'Copy Link'; }, 1500);
-    }
-
-    function appendEntryActions(cardEl, path, includeBack = false) {
-        const actions = document.createElement('div');
-        actions.className = 'card-actions';
-        const copyButton = createActionButton('Copy Link', () => copyEntryLink(path, copyButton));
-        actions.appendChild(copyButton);
-        if (includeBack) {
-            actions.appendChild(createActionButton('Back to Timeline', () => {
-                history.pushState({}, '', window.location.pathname);
-                showTimeline('');
-            }));
-        }
-        cardEl.appendChild(actions);
-    }
-
     function renderEntries(entries) {
         entries.forEach(entry => {
             const autoExpand = DailyFlowCore.shouldAutoExpand(currentMode, renderedTimelineCount);
@@ -181,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderTimelineItem(path, markdown, autoExpand = false, includeBack = false) {
+    function renderTimelineItem(path, markdown, autoExpand = false) {
         const itemEl = document.createElement('div');
         itemEl.className = 'timeline-item';
 
@@ -208,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentMarkdownPath = path;
                 contentWrapper.innerHTML = marked.parse(markdown);
                 button.remove();
+                scheduleTimelineFocus();
             });
             cardEl.append(contentWrapper, button);
         } else {
@@ -215,9 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
             cardEl.appendChild(contentWrapper);
         }
 
-        appendEntryActions(cardEl, path, includeBack);
         itemEl.appendChild(cardEl);
         timelineEl.appendChild(itemEl);
+        scheduleTimelineFocus();
     }
 
     function appendHighlightedText(element, text, query) {
@@ -247,14 +215,37 @@ document.addEventListener('DOMContentLoaded', () => {
         appendHighlightedText(snippetEl, result.snippet, query);
         cardEl.append(titleEl, snippetEl);
 
-        const actions = document.createElement('div');
-        actions.className = 'card-actions';
-        actions.appendChild(createActionButton('Open Entry', () => showEntry(result.path, true)));
-        const copyButton = createActionButton('Copy Link', () => copyEntryLink(result.path, copyButton));
-        actions.appendChild(copyButton);
-        cardEl.appendChild(actions);
+        const expandButton = document.createElement('button');
+        expandButton.type = 'button';
+        expandButton.className = 'read-more-btn';
+        expandButton.textContent = 'Read More';
+        expandButton.addEventListener('click', () => expandSearchResult(result.path, cardEl, expandButton));
+        cardEl.appendChild(expandButton);
         itemEl.appendChild(cardEl);
         timelineEl.appendChild(itemEl);
+        scheduleTimelineFocus();
+    }
+
+    async function expandSearchResult(path, cardEl, button) {
+        const generation = requestGeneration;
+        button.disabled = true;
+        try {
+            const response = await fetch(`/api/entry?path=${encodeURIComponent(path)}`);
+            if (redirectIfUnauthorized(response)) return;
+            if (!response.ok) throw new Error(`Entry request failed: ${response.status}`);
+            const markdown = await response.text();
+            if (!DailyFlowCore.isActiveRequest(currentMode, 'search', generation, requestGeneration)) return;
+            currentMarkdownPath = path;
+            const content = document.createElement('div');
+            content.className = 'markdown-content';
+            content.innerHTML = marked.parse(markdown);
+            cardEl.replaceChildren(content);
+            scheduleTimelineFocus();
+        } catch (error) {
+            console.error(error);
+            button.disabled = false;
+            button.textContent = 'Try Again';
+        }
     }
 
     async function performSearch(query, generation) {
@@ -276,35 +267,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error.name !== 'AbortError' && DailyFlowCore.isActiveRequest(currentMode, 'search', generation, requestGeneration)) {
                 console.error(error);
                 showMessage('Search failed.');
-            }
-        } finally {
-            if (activeRequestController === controller) activeRequestController = null;
-        }
-    }
-
-    async function showEntry(path, pushHistory = false) {
-        const generation = beginMode('entry');
-        if (!DailyFlowCore.isValidEntryPath(path)) {
-            sentinelEl.style.display = 'none';
-            showMessage('Invalid entry link.');
-            return;
-        }
-        if (pushHistory) history.pushState({}, '', DailyFlowCore.buildEntryURL(path, window.location.href));
-        timelineEl.innerHTML = '';
-        sentinelEl.style.display = 'none';
-        const controller = new AbortController();
-        activeRequestController = controller;
-        try {
-            const response = await fetch(`/api/entry?path=${encodeURIComponent(path)}`, { signal: controller.signal });
-            if (redirectIfUnauthorized(response)) return;
-            if (!response.ok) throw new Error(`Entry request failed: ${response.status}`);
-            const markdown = await response.text();
-            if (!DailyFlowCore.isActiveRequest(currentMode, 'entry', generation, requestGeneration)) return;
-            renderTimelineItem(path, markdown, true, true);
-        } catch (error) {
-            if (error.name !== 'AbortError' && DailyFlowCore.isActiveRequest(currentMode, 'entry', generation, requestGeneration)) {
-                console.error(error);
-                showMessage('Could not load this entry.');
             }
         } finally {
             if (activeRequestController === controller) activeRequestController = null;
@@ -371,11 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function routeFromLocation() {
         const params = new URLSearchParams(window.location.search);
-        const entry = params.get('entry');
-        if (entry) {
-            await showEntry(entry);
-            return;
-        }
         const requestedMonth = params.get('month') || '';
         const monthExists = requestedMonth === '' || Array.from(monthSelect.options).some(option => option.value === requestedMonth);
         showTimeline(monthExists ? requestedMonth : '');

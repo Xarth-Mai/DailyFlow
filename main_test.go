@@ -18,6 +18,7 @@ func TestPublicAssets(t *testing.T) {
 		"/app.js":      false,
 		"/":            false,
 		"/app-core.js": true,
+		"/theme.js":    true,
 	} {
 		if got := isPublicAsset(path); got != want {
 			t.Errorf("isPublicAsset(%q) = %v, want %v", path, got, want)

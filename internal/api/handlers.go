@@ -85,11 +85,7 @@ func (a *API) HandleEntry(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) HandleSearch(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
-	results, err := a.Scanner.Search(query)
-	if err != nil {
-		http.Error(w, "Search failed", http.StatusInternalServerError)
-		return
-	}
+	results := a.Scanner.Search(query)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
 }

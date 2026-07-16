@@ -23,7 +23,7 @@ var webFS embed.FS
 
 func isPublicAsset(path string) bool {
 	switch path {
-	case "/login.html", "/style.css", "/favicon.png", "/app-core.js":
+	case "/login.html", "/style.css", "/favicon.png", "/app-core.js", "/theme.js":
 		return true
 	default:
 		return false

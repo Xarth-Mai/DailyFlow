@@ -59,13 +59,6 @@
         return mode === 'timeline';
     }
 
-    function isValidEntryPath(path) {
-        if (typeof path !== 'string' || !path.startsWith('/') || !path.toLowerCase().endsWith('.md') || path.includes('\\')) {
-            return false;
-        }
-        const segments = path.slice(1).split('/');
-        return segments.every(segment => segment && segment !== '.' && segment !== '..');
-    }
 
     function safeReturnPath(value, origin) {
         if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//') || value.includes('\\') || /[\u0000-\u001f\u007f]/.test(value)) {
@@ -85,14 +78,5 @@
         return `/login.html?return=${encodeURIComponent(pathname + search)}`;
     }
 
-    function buildEntryURL(path, baseHref) {
-        if (!isValidEntryPath(path)) throw new Error('Invalid entry path');
-        const url = new URL(baseHref);
-        url.search = '';
-        url.hash = '';
-        url.searchParams.set('entry', path);
-        return url.toString();
-    }
-
-    return { buildEntryURL, buildLoginURL, escapeAttribute, highlightParts, initialMode, isActiveRequest, isSafeLinkHref, isValidEntryPath, safeReturnPath, shouldAutoExpand, shouldLoadTimeline };
+    return { buildLoginURL, escapeAttribute, highlightParts, initialMode, isActiveRequest, isSafeLinkHref, safeReturnPath, shouldAutoExpand, shouldLoadTimeline };
 }));
