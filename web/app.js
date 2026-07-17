@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`/api/list?${params}`, { signal: controller.signal });
             if (redirectIfUnauthorized(response)) return;
             if (!response.ok) throw new Error(`List request failed: ${response.status}`);
+            const responseHasMore = response.headers.get('X-Has-More') === 'true';
             const entries = await response.json();
             if (!DailyFlowCore.isActiveRequest(currentMode, 'timeline', generation, requestGeneration)) return;
             if (!entries || entries.length === 0) {
@@ -126,10 +127,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             renderEntries(entries);
+            hasMore = responseHasMore;
+            sentinelEl.style.display = hasMore ? 'flex' : 'none';
             currentPage++;
         } catch (error) {
             if (error.name !== 'AbortError' && DailyFlowCore.isActiveRequest(currentMode, 'timeline', generation, requestGeneration)) {
                 console.error(error);
+                hasMore = false;
+                sentinelEl.style.display = 'none';
                 showMessage('Could not load entries.');
             }
         } finally {

@@ -6,6 +6,7 @@ import (
 	"dailyflow/internal/config"
 	"dailyflow/internal/scanner"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -100,6 +101,34 @@ func TestHandleList(t *testing.T) {
 	json.NewDecoder(rr.Body).Decode(&results)
 	if len(results) != 1 {
 		t.Errorf("Expected 1 entry, got %d", len(results))
+	}
+	if rr.Header().Get("X-Has-More") != "false" {
+		t.Fatalf("Expected final page header, got %q", rr.Header().Get("X-Has-More"))
+	}
+}
+
+func TestHandleListReportsMorePages(t *testing.T) {
+	tempDir := t.TempDir()
+	for i := 0; i < 16; i++ {
+		name := filepath.Join(tempDir, fmt.Sprintf("entry-%02d.md", i))
+		if err := os.WriteFile(name, []byte("content"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	api := &API{Scanner: scanner.NewScanner(tempDir)}
+	req := httptest.NewRequest(http.MethodGet, "/api/list?page=1", nil)
+	rr := httptest.NewRecorder()
+	api.HandleList(rr, req)
+
+	if rr.Header().Get("X-Has-More") != "true" {
+		t.Fatalf("Expected another-page header, got %q", rr.Header().Get("X-Has-More"))
+	}
+	var results []scanner.JournalEntry
+	if err := json.NewDecoder(rr.Body).Decode(&results); err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 15 {
+		t.Fatalf("Expected a full page, got %d", len(results))
 	}
 }
 

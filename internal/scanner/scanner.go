@@ -96,7 +96,7 @@ func entryMonth(path string) string {
 	return date.Format("2006-01")
 }
 
-func (s *Scanner) ListByMonth(page, limit int, month string) []JournalEntry {
+func (s *Scanner) ListByMonth(page, limit int, month string) ([]JournalEntry, bool) {
 	paths := s.markdownPaths()
 	if month != "" {
 		filtered := paths[:0]
@@ -116,7 +116,7 @@ func (s *Scanner) ListByMonth(page, limit int, month string) []JournalEntry {
 	}
 	start := (page - 1) * limit
 	if start >= len(paths) {
-		return []JournalEntry{}
+		return []JournalEntry{}, false
 	}
 	end := min(start+limit, len(paths))
 
@@ -127,7 +127,7 @@ func (s *Scanner) ListByMonth(page, limit int, month string) []JournalEntry {
 			results = append(results, JournalEntry{Path: path, Content: string(content)})
 		}
 	}
-	return results
+	return results, end < len(paths)
 }
 
 func (s *Scanner) Months() []string {

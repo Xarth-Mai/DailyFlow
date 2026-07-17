@@ -59,8 +59,9 @@ func (a *API) HandleList(w http.ResponseWriter, r *http.Request) {
 		page = 1
 	}
 
-	files := a.Scanner.ListByMonth(page, 15, r.URL.Query().Get("month"))
+	files, hasMore := a.Scanner.ListByMonth(page, 15, r.URL.Query().Get("month"))
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Has-More", strconv.FormatBool(hasMore))
 	json.NewEncoder(w).Encode(files)
 }
 
