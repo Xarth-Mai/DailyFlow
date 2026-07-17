@@ -206,8 +206,9 @@ body {
 
 /* --- Timeline --- */
 .timeline {
+    --timeline-indent: 2.5rem;
     position: relative;
-    padding-left: 2.5rem;
+    padding-left: var(--timeline-indent);
 }
 
 /* Vertical Timeline Line */
@@ -243,7 +244,8 @@ body {
     content: '';
     position: absolute;
     top: 4px;
-    left: calc(-2.5rem - 5px);
+    left: calc(1px - var(--timeline-indent));
+    transform: translateX(-50%);
     width: 12px;
     height: 12px;
     border-radius: 50%;
@@ -555,11 +557,10 @@ body {
     }
 
     .timeline {
-        padding-left: 2rem;
+        --timeline-indent: 2rem;
     }
 
     .timeline-item::before {
-        left: -2.35rem;
         width: 10px;
         height: 10px;
     }
